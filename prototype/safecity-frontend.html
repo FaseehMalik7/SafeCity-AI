@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SafeCity AI — Ambulance Green Corridor (Abbottabad Demo)</title>
+  <meta name="description" content="CCTV-based intelligent traffic preemption for emergency vehicles in Abbottabad, Pakistan.">
+  <style>
+    /* DESIGN TOKENS (Solid colors only, zero gradients, system Helvetica stack) */
+    :root {
+      --bg: #0b0f17;
+      --surface: #111827;
+      --surface-elevated: #1f2937;
+      --border: #374151;
+      --border-subtle: #1f2937;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-surface: #1e3a8a;
+      
+      --success: #16a34a;
+      --success-surface: #064e3b;
+      --warning: #d97706;
+      --warning-surface: #78350f;
+      --danger: #dc2626;
+      --danger-surface: #7f1d1d;
+      
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+      
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+      
+      --font-stack: "Neue Haas Grotesk Text Pro", "Neue Haas Unica Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    [data-theme="light"] {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --surface-elevated: #f9fafb;
+      --border: #e5e7eb;
+      --border-subtle: #f3f4f6;
+      --text-primary: #111827;
+      --text-secondary: #4b5563;
+      --text-muted: #9ca3af;
+      
+      --accent: #1d4ed8;
+      --accent-hover: #1e40af;
+      --accent-surface: #dbeafe;
+      
+      --success: #15803d;
+      --success-surface: #dcfce7;
+      --warning: #b45309;
+      --warning-surface: #fef3c7;
+      --danger: #b91c1c;
+      --danger-surface: #fee2e2;
+      
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-stack);
+      font-variant-numeric: tabular-nums;
+      background-color: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Simulation Notice Banner */
+    .sim-banner {
+      background-color: var(--warning-surface);
+      color: var(--warning);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      padding: 4px 12px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* Header */
+    header {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+      z-index: 20;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .menu-toggle { display: none; background: none; border: 1px solid var(--border); color: var(--text-primary); padding: 6px; border-radius: var(--radius-sm); cursor: pointer; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--text-primary); }
+    .brand svg { color: var(--accent); }
+    .header-center { display: flex; align-items: center; gap: 16px; }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background-color: var(--success-surface);
+      color: var(--success);
+      border: 1px solid var(--success);
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .pulse-dot { width: 8px; height: 8px; background-color: var(--success); border-radius: 50%; display: inline-block; }
+    .clock { font-size: 13px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .btn-icon { background: var(--surface-elevated); border: 1px solid var(--border); color: var(--text-primary); padding: 6px 10px; border-radius: var(--radius-md); cursor: pointer; font-size: 13px; font-weight: 500; }
+    .btn-icon:hover { border-color: var(--accent); }
+
+    /* Layout Wrapper */
+    .app-layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* Sidebar Drawer */
+    aside {
+      width: 250px;
+      background-color: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 12px;
+      transition: transform 0.2s ease;
+      z-index: 30;
+    }
+    .nav-group { display: flex; flex-direction: column; gap: 4px; }
+    .nav-label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; padding: 8px 12px 4px; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .nav-item:hover { background-color: var(--surface-elevated); color: var(--text-primary); }
+    .nav-item.active { background-color: var(--accent); color: #ffffff; }
+    .sidebar-footer {
+      background-color: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      font-size: 12px;
+    }
+    .sidebar-footer h4 { color: var(--danger); font-size: 12px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+
+    /* Main Dashboard View */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      grid-template-rows: auto auto 1fr;
+      gap: 16px;
+    }
+
+    /* Cards */
+    .card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px; }
+    .card-title { font-size: 14px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+
+    /* CCTV Feed Monitor */
+    .cctv-card { grid-column: 1 / 2; }
+    .video-viewport {
+      position: relative;
+      background-color: #000000;
+      border-radius: var(--radius-sm);
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+    }
+    .cctv-meta-tag {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background-color: rgba(0,0,0,0.75);
+      border: 1px solid #4b5563;
+      color: #e5e7eb;
+      font-size: 11px;
+      font-family: monospace;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      z-index: 5;
+    }
+    .cctv-rec {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      color: var(--danger);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      z-index: 5;
+    }
+    .bbox {
+      position: absolute;
+      border: 2px solid;
+      background-color: rgba(255,255,255,0.05);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 4px;
+      z-index: 4;
+    }
+    .bbox-label { position: absolute; top: -18px; left: -2px; padding: 1px 6px; color: #fff; font-size: 10px; border-radius: 2px 2px 0 0; }
+    .bbox-ambulance { border-color: var(--danger); }
+    .bbox-ambulance .bbox-label { background-color: var(--danger); }
+    .bbox-car { border-color: var(--accent); }
+    .bbox-car .bbox-label { background-color: var(--accent); }
+    .bbox-moto { border-color: var(--warning); }
+    .bbox-moto .bbox-label { background-color: var(--warning); }
+
+    .cctv-actions { display: flex; gap: 8px; }
+    .btn {
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-secondary { background-color: var(--surface-elevated); border-color: var(--border); color: var(--text-primary); }
+    .btn-secondary:hover { border-color: var(--accent); }
+    .btn-danger { background-color: var(--danger); color: #ffffff; }
+    .btn-danger:hover { background-color: #b91c1c; }
+
+    /* Stat Cards Row */
+    .stats-row { grid-column: 1 / 2; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .stat-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+    }
+    .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .stat-val { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-top: 4px; }
+    .stat-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+    /* Map & Corridor Tracking */
+    .map-card { grid-column: 2 / 3; grid-row: 1 / 3; display: flex; flex-direction: column; }
+    .map-view {
+      flex: 1;
+      min-height: 280px;
+      background-color: #1a202c;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      position: relative;
+      overflow: hidden;
+    }
+    .map-legend { display: flex; gap: 16px; font-size: 11px; color: var(--text-secondary); }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* Signals & Progress */
+    .bottom-row { grid-column: 1 / 3; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .signals-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .signal-box {
+      background-color: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      text-align: center;
+    }
+    .signal-name { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+    .signal-light {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      margin: 0 auto 6px;
+      border: 2px solid var(--border);
+    }
+    .signal-green { background-color: var(--success); box-shadow: 0 0 10px rgba(22, 163, 74, 0.4); }
+    .signal-countdown { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+
+    /* Event Log */
+    .event-list { display: flex; flex-direction: column; gap: 6px; max-height: 140px; overflow-y: auto; }
+    .event-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 6px 10px;
+      background-color: var(--surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+
+    /* Responsive Breakpoints (<1100px and <640px) */
+    @media (max-width: 1100px) {
+      aside { position: fixed; top: 0; bottom: 0; left: 0; transform: translateX(-100%); }
+      aside.open { transform: translateX(0); }
+      .menu-toggle { display: block; }
+      main { grid-template-columns: 1fr; }
+      .cctv-card, .stats-row, .map-card, .bottom-row { grid-column: 1 / 2; grid-row: auto; }
+    }
+    @media (max-width: 640px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .signals-grid { grid-template-columns: repeat(2, 1fr); }
+      .bottom-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Simulation Notice -->
+  <div class="sim-banner">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: -2px; margin-right: 4px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    DEMONSTRATION MODE: Signal preemption logic is simulated. Real municipal signals are never controlled.
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle Navigation">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+      </button>
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        SafeCity AI
+      </div>
+      <span style="font-size: 12px; color: var(--text-muted); border-left: 1px solid var(--border); padding-left: 12px;">Abbottabad Corridor</span>
+    </div>
+
+    <div class="header-center">
+      <div class="status-badge">
+        <span class="pulse-dot"></span>
+        Green Corridor Active
+      </div>
+      <div class="clock" id="liveClock">10:58:34 PKT</div>
+    </div>
+
+    <div class="header-right">
+      <button class="btn-icon" id="themeToggle" style="display: flex; align-items: center; gap: 6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        Toggle Theme
+      </button>
+      <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">Rescue 1122 Feed</div>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="nav-group">
+        <div class="nav-label">Operations</div>
+        <a class="nav-item active">Live Monitor</a>
+        <a class="nav-item">Route & Map</a>
+        <a class="nav-item">Signal Control</a>
+        <a class="nav-item">Event History</a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-label">Infrastructure</div>
+        <a class="nav-item">CCTV Sources</a>
+        <a class="nav-item">City Hospital Route</a>
+        <a class="nav-item">System Settings</a>
+      </div>
+
+      <div class="sidebar-footer">
+        <h4>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Corridor Alert
+        </h4>
+        <p style="color: var(--text-secondary);">Ambulance #AB-901 inbound to City Hospital via Main Blvd.</p>
+      </div>
+    </aside>
+
+    <!-- Main Content Grid -->
+    <main>
+      <!-- CCTV Live Monitor -->
+      <section class="card cctv-card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            Live CCTV Feed — Camera CCTV-01 (Main Blvd)
+          </div>
+          <div class="cctv-actions">
+            <button class="btn btn-secondary" id="offlineSimBtn">Simulate Offline</button>
+            <button class="btn btn-danger" id="alertRescueBtn">Alert Rescue 1122</button>
+          </div>
+        </div>
+
+        <div class="video-viewport" id="viewport">
+          <div class="cctv-meta-tag">CAM-01 | MAIN BLVD / JINNAH RD | 25.0 FPS</div>
+          <div class="cctv-rec">● LIVE</div>
+
+          <!-- Bounding Boxes Overlay (Verified) -->
+          <div class="bbox bbox-ambulance" style="top: 25%; left: 35%; width: 28%; height: 35%;">
+            <div class="bbox-label">Ambulance 0.94</div>
+          </div>
+          <div class="bbox bbox-car" style="top: 50%; left: 10%; width: 20%; height: 30%;">
+            <div class="bbox-label">Car 0.82</div>
+          </div>
+          <div class="bbox bbox-car" style="top: 15%; left: 70%; width: 22%; height: 28%;">
+            <div class="bbox-label">Car 0.76</div>
+          </div>
+          <div class="bbox bbox-moto" style="top: 65%; left: 75%; width: 15%; height: 22%;">
+            <div class="bbox-label">Motorcycle 0.71</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stat Cards -->
+      <section class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Detection Confidence</div>
+          <div class="stat-val" style="color: var(--danger);">94.2%</div>
+          <div class="stat-sub">Class: Type-A Ambulance</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Estimated Arrival</div>
+          <div class="stat-val" style="color: var(--success);">3m 45s</div>
+          <div class="stat-sub">Distance: 1.8 km to Hospital</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Corridor Speed</div>
+          <div class="stat-val">58 km/h</div>
+          <div class="stat-sub">Time Saved: +4.2 mins</div>
+        </div>
+      </section>
+
+      <!-- Map & Route SVG -->
+      <section class="card map-card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            Live Corridor Route Tracking (Abbottabad)
+          </div>
+          <div class="map-legend">
+            <span class="legend-item"><span class="legend-dot" style="background-color: var(--success);"></span> Green Signal</span>
+            <span class="legend-item"><span class="legend-dot" style="background-color: var(--danger);"></span> Ambulance</span>
+            <span class="legend-item"><span class="legend-dot" style="background-color: var(--accent);"></span> Hospital</span>
+          </div>
+        </div>
+
+        <div class="map-view">
+          <svg width="100%" height="100%" viewBox="0 0 500 300" style="display: block;">
+            <!-- Grid roads -->
+            <path d="M50 150 L450 150" stroke="#374151" stroke-width="14" fill="none"/>
+            <path d="M120 40 L120 260" stroke="#1f2937" stroke-width="8" fill="none"/>
+            <path d="M220 40 L220 260" stroke="#1f2937" stroke-width="8" fill="none"/>
+            <path d="M320 40 L320 260" stroke="#1f2937" stroke-width="8" fill="none"/>
+            <path d="M420 40 L420 260" stroke="#1f2937" stroke-width="8" fill="none"/>
+            
+            <!-- Green Corridor Route Line -->
+            <path d="M50 150 L450 150" stroke="var(--success)" stroke-width="6" stroke-dasharray="8 4" fill="none"/>
+
+            <!-- Intersections -->
+            <circle cx="120" cy="150" r="10" fill="var(--success)"/>
+            <text x="120" y="180" fill="#9ca3af" font-size="10" text-anchor="middle">Int-1 (42s)</text>
+
+            <circle cx="220" cy="150" r="10" fill="var(--success)"/>
+            <text x="220" y="180" fill="#9ca3af" font-size="10" text-anchor="middle">Int-2 (55s)</text>
+
+            <circle cx="320" cy="150" r="10" fill="var(--success)"/>
+            <text x="320" y="180" fill="#9ca3af" font-size="10" text-anchor="middle">Int-3 (68s)</text>
+
+            <circle cx="420" cy="150" r="10" fill="var(--success)"/>
+            <text x="420" y="180" fill="#9ca3af" font-size="10" text-anchor="middle">Int-4 (90s)</text>
+
+            <!-- Moving Ambulance Marker (Lucide Vector Cross) -->
+            <g id="ambulanceMarker" transform="translate(160, 150)">
+              <circle cx="0" cy="0" r="13" fill="var(--danger)" stroke="#ffffff" stroke-width="2"/>
+              <path d="M-5 -2 H-2 V-5 H2 V-2 H5 V2 H2 V5 H-2 V2 H-5 Z" fill="#ffffff" />
+            </g>
+
+            <!-- Hospital Destination Marker (Lucide Building Vector) -->
+            <g transform="translate(450, 150)">
+              <rect x="-14" y="-14" width="28" height="28" fill="var(--accent)" rx="4"/>
+              <path d="M-6 -2 H-2 V-6 H2 V-2 H6 V2 H2 V6 H-2 V2 H-6 Z" fill="#ffffff" />
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <!-- Bottom Status & Event Log -->
+      <section class="bottom-row">
+        <!-- Signals Control Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Traffic Signals Status (Route Priority)</div>
+            <span style="font-size: 11px; color: var(--success); font-weight: 600;">All 4 Green Preempted</span>
+          </div>
+          <div class="signals-grid">
+            <div class="signal-box">
+              <div class="signal-name">Int-01 Main/Jinnah</div>
+              <div class="signal-light signal-green"></div>
+              <div class="signal-countdown">42s</div>
+            </div>
+            <div class="signal-box">
+              <div class="signal-name">Int-02 Cantt Chowk</div>
+              <div class="signal-light signal-green"></div>
+              <div class="signal-countdown">55s</div>
+            </div>
+            <div class="signal-box">
+              <div class="signal-name">Int-03 Mandian Rd</div>
+              <div class="signal-light signal-green"></div>
+              <div class="signal-countdown">68s</div>
+            </div>
+            <div class="signal-box">
+              <div class="signal-name">Int-04 Hospital Chowk</div>
+              <div class="signal-light signal-green"></div>
+              <div class="signal-countdown">90s</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Event Log -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Corridor Event Log</div>
+            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" id="clearEvents">Clear Log</button>
+          </div>
+          <div class="event-list" id="eventList">
+            <div class="event-item">
+              <span><strong>10:57:12</strong> — Priority Green corridor engaged for Intersections 1–4</span>
+              <span style="color: var(--success); font-weight: 600;">ACTIVE</span>
+            </div>
+            <div class="event-item">
+              <span><strong>10:56:45</strong> — Route to City Hospital calculated (1.8 km, 3m 45s ETA)</span>
+              <span style="color: var(--accent); font-weight: 600;">CALCULATED</span>
+            </div>
+            <div class="event-item">
+              <span><strong>10:56:30</strong> — Ambulance detected on CCTV-01 (Confidence: 0.94)</span>
+              <span style="color: var(--danger); font-weight: 600;">DETECTED</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Live Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('liveClock').textContent = now.toLocaleTimeString() + ' PKT';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Theme Toggle
+    const themeBtn = document.getElementById('themeToggle');
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+    });
+
+    // Mobile Menu Drawer Toggle
+    const menuBtn = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    if (menuBtn) {
+      menuBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+      });
+    }
+
+    // Offline Simulation Toggle
+    const offlineBtn = document.getElementById('offlineSimBtn');
+    let isOffline = false;
+    offlineBtn.addEventListener('click', () => {
+      isOffline = !isOffline;
+      const vp = document.getElementById('viewport');
+      if (isOffline) {
+        vp.style.backgroundColor = '#374151';
+        vp.innerHTML = '<div style="color: var(--danger); font-weight: 700; text-align: center;">CAMERA CCTV-01 OFFLINE<br><span style="font-size: 12px; color: var(--text-secondary);">Signal lost. Fallback corridor schedule maintained.</span></div>';
+        offlineBtn.textContent = 'Restore Camera';
+      } else {
+        location.reload();
+      }
+    });
+
+    // Rescue 1122 Dispatch Alert
+    const rescueBtn = document.getElementById('alertRescueBtn');
+    rescueBtn.addEventListener('click', () => {
+      const list = document.getElementById('eventList');
+      const item = document.createElement('div');
+      item.className = 'event-item';
+      item.innerHTML = `<span><strong>${new Date().toLocaleTimeString()}</strong> — Automated Dispatch Alert dispatched to Rescue 1122 Central</span><span style="color: var(--danger); font-weight: 600;">DISPATCHED</span>`;
+      list.prepend(item);
+      alert('Simulated Alert Sent: Rescue 1122 dispatch notified of green corridor transit.');
+    });
+
+    // Clear Events
+    document.getElementById('clearEvents').addEventListener('click', () => {
+      document.getElementById('eventList').innerHTML = '<div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 12px;">No active corridor events.</div>';
+    });
+  </script>
+</body>
+</html>
